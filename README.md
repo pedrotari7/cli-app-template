@@ -1,1 +1,1 @@
-# cli-app-template
+# CLI application template
