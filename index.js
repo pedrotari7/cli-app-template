@@ -15,9 +15,6 @@ inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'))
 const appDescription = 'CLI App';
 const appVersion = '1.0.0';
 
-let globalMessage;
-let previousMenu = [];
-
 const logoPath = `${__dirname}/images/logo.png`;
 const storePath = `${__dirname}/store.json`;
 
@@ -30,11 +27,6 @@ const reset = async () => {
     await showImage(logoPath);
   } else {
     console.log(chalk.blueBright(figlet.textSync('CLI APP')));
-  }
-
-  if (globalMessage) {
-    process.stdout.write(globalMessage);
-    globalMessage = '';
   }
 };
 
@@ -49,30 +41,22 @@ const SEPARATOR = new inquirer.Separator('\n');
 
 commander.version(appVersion).description(appDescription).parse(process.argv);
 
+const listPrompt = (choices, message) => prompt({ type: 'list', name: 'menu', message, choices, pageSize: 100 });
+
+const handleResponse = ({ menu }, cbs) => (menu in cbs ? cbs[menu]() : cbs.Default());
+
 const topMenu = async (skipreset = false) => {
   if (!skipreset) await reset();
 
   const defaultMenus = ['Settings'];
 
-  const response = await prompt({
-    type: 'list',
-    name: 'menu',
-    message: 'What next',
-    choices: [SEPARATOR, ...defaultMenus, SEPARATOR, 'Exit'],
-    pageSize: 100,
-  });
+  const choices = [SEPARATOR, ...defaultMenus, SEPARATOR, 'Exit'];
+  const response = await listPrompt(choices, 'What next');
 
-  switch (response.menu) {
-    case 'Settings':
-      settingsMenu();
-      break;
-    case 'Exit':
-      exit();
-      break;
-    default:
-      break;
-  }
-  previousMenu.push(topMenu);
+  await handleResponse(response, {
+    Settings: () => settingsMenu(),
+    Exit: exit,
+  });
 };
 
 const settingsMenu = async () => {
@@ -85,26 +69,13 @@ const settingsMenu = async () => {
 
   const settingsChoices = ['TEST'];
 
-  const response = await prompt({
-    type: 'list',
-    name: 'menu',
-    message: 'Settings',
-    choices: [SEPARATOR, ...settingsChoices, SEPARATOR, 'Back', 'Exit'],
-    pageSize: 100,
-  });
+  const choices = [SEPARATOR, ...settingsChoices, SEPARATOR, 'Back', 'Exit'];
+  const response = await listPrompt(choices, 'What next');
 
-  switch (response.menu) {
-    case 'Back':
-      previousMenu.pop()();
-      break;
-    case 'Exit':
-      exit();
-      break;
-    default:
-      settingsMenu();
-      break;
-  }
-  previousMenu.push(settingsMenu);
+  await handleResponse(response, {
+    Back: () => topMenu(),
+    Exit: exit,
+  });
 };
 
 const showImage = async (path) => {
